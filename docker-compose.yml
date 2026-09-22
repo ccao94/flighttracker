@@ -1,0 +1,9 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: flighttracker
+      POSTGRES_PASSWORD: flighttracker
+      POSTGRES_DB: flighttracker
+    ports:
+      - "5434:5432"
