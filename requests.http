@@ -1,0 +1,19 @@
+POST http://localhost:8080/api/aircraft
+Content-Type: application/json
+
+{"icao24": "3c6444", "callsign": "DLH9LF", "registration": "D-AIBD", "model": "A319", "originCountry": "Germany"}
+
+###
+GET http://localhost:8080/api/aircraft/3c6444
+
+###
+GET http://localhost:8080/api/aircraft?country=Germany
+
+###
+GET http://localhost:8080/api/aircraft/abcdef
+
+###
+POST http://localhost:8080/api/aircraft
+Content-Type: application/json
+
+{"icao24": "zz"}
