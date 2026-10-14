@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.cao.flighttracker.position.PositionHistoryService;
+import com.cao.flighttracker.position.PositionSnapshotResponse;
+
 import jakarta.validation.Valid;
 
 @RestController
@@ -20,10 +23,13 @@ public class AircraftController {
 
     private final AircraftService service;
     private final LivePositionService livePositionService;
+    private final PositionHistoryService positionHistoryService;
 
-    public AircraftController(AircraftService service, LivePositionService livePositionService) {
+    public AircraftController(AircraftService service, LivePositionService livePositionService,
+                              PositionHistoryService positionHistoryService) {
         this.service = service;
         this.livePositionService = livePositionService;
+        this.positionHistoryService = positionHistoryService;
     }
 
     @GetMapping
@@ -42,6 +48,14 @@ public class AircraftController {
     @GetMapping("/{icao24}/position")
     public LivePositionResponse position(@PathVariable String icao24) {
         return LivePositionResponse.from(livePositionService.getLivePosition(icao24.toLowerCase()));
+    }
+
+    @GetMapping("/{icao24}/history")
+    public List<PositionSnapshotResponse> history(@PathVariable String icao24,
+                                                  @RequestParam(defaultValue = "50") int limit) {
+        return positionHistoryService.getHistory(icao24.toLowerCase(), limit).stream()
+                .map(PositionSnapshotResponse::from)
+                .toList();
     }
 
     @PostMapping

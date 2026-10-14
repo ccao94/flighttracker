@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.cao.flighttracker.opensky.StateVector;
+import com.cao.flighttracker.position.PositionHistoryService;
+import com.cao.flighttracker.position.PositionSnapshot;
 
 @WebMvcTest(AircraftController.class)
 class AircraftControllerTest {
@@ -32,6 +35,9 @@ class AircraftControllerTest {
 
     @MockitoBean
     private LivePositionService livePositionService;
+
+    @MockitoBean
+    private PositionHistoryService positionHistoryService;
 
     private Aircraft sampleAircraft() {
         return new Aircraft("3c6444", "DLH9LF", "D-AIBD", "A319", "Germany");
@@ -118,5 +124,17 @@ class AircraftControllerTest {
 
         mockMvc.perform(get("/api/aircraft/3c6444/position"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void historyReturnsSnapshots() throws Exception {
+        PositionSnapshot snapshot = new PositionSnapshot(sampleAircraft(),
+                Instant.ofEpochSecond(1760000005), 48.67, 2.35, 998.0, false, 76.4, 198.4);
+        when(positionHistoryService.getHistory("3c6444", 50)).thenReturn(List.of(snapshot));
+
+        mockMvc.perform(get("/api/aircraft/3c6444/history"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].latitude").value(48.67))
+                .andExpect(jsonPath("$.length()").value(1));
     }
 }

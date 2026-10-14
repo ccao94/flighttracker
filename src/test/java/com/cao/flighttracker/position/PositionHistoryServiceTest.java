@@ -1,7 +1,9 @@
 package com.cao.flighttracker.position;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,11 +14,14 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Limit;
 
 import com.cao.flighttracker.aircraft.Aircraft;
+import com.cao.flighttracker.aircraft.AircraftNotFoundException;
 import com.cao.flighttracker.aircraft.AircraftRepository;
 import com.cao.flighttracker.opensky.StateVector;
 
@@ -83,5 +88,25 @@ class PositionHistoryServiceTest {
 
         assertThat(saved).isZero();
         verify(snapshotRepository, never()).save(any());
+    }
+
+    @Test
+    void historyOfUnknownAircraftThrows() {
+        when(aircraftRepository.existsById("abcdef")).thenReturn(false);
+
+        assertThatThrownBy(() -> service.getHistory("abcdef", 50))
+                .isInstanceOf(AircraftNotFoundException.class);
+    }
+
+    @Test
+    void historyLimitIsCapped() {
+        when(aircraftRepository.existsById("39de4d")).thenReturn(true);
+        ArgumentCaptor<Limit> limitCaptor = ArgumentCaptor.forClass(Limit.class);
+
+        service.getHistory("39de4d", 1_000_000);
+
+        verify(snapshotRepository).findByAircraftIcao24OrderByRecordedAtDesc(
+                eq("39de4d"), limitCaptor.capture());
+        assertThat(limitCaptor.getValue().max()).isEqualTo(500);
     }
 }
