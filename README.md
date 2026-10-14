@@ -1,7 +1,8 @@
 # FlightTracker
 
 REST API for tracking real aircraft by their ICAO24 transponder address, built with Spring Boot.
-Live positions come from ADS-B data provided by the [OpenSky Network](https://opensky-network.org).
+Live positions come from ADS-B data provided by the [OpenSky Network](https://opensky-network.org),
+and a scheduled task builds a position history for every aircraft in the fleet.
 
 Personal project, started in September 2026 to learn the Spring ecosystem, following my
 internship at Thales AVS (Training & Simulation).
@@ -9,9 +10,9 @@ internship at Thales AVS (Training & Simulation).
 ## Stack
 
 - Java 17, Spring Boot 4.1
-- Spring Web, Spring Data JPA (Hibernate), Bean Validation
+- Spring Web, Spring Data JPA (Hibernate), Bean Validation, Spring scheduling
 - RestClient, OAuth2 client credentials (OpenSky API)
-- PostgreSQL 16 (Docker)
+- PostgreSQL 16 (Docker), Flyway migrations
 - JUnit 5, Mockito, MockMvc
 - Maven
 
@@ -27,14 +28,22 @@ aircraft/
 ├── CreateAircraftRequest.java       # input DTO with validation
 ├── AircraftResponse.java            # output DTO
 └── LivePositionResponse.java        # live position DTO, units in field names
+position/
+├── PositionSnapshot.java            # one recorded position, many-to-one with Aircraft
+├── PositionSnapshotRepository.java  # history queries with a row limit
+├── PositionHistoryService.java      # deduplicated writes, bounded reads
+├── PositionCollector.java           # scheduled collection of the whole fleet
+└── PositionSnapshotResponse.java
 opensky/
 ├── OpenSkyProperties.java           # typed configuration
 ├── OpenSkyTokenProvider.java        # OAuth2 token, cached and refreshed before expiry
-├── OpenSkyClient.java               # calls /states/all
+├── OpenSkyClient.java               # calls /states/all, one request for many aircraft
 ├── StateVectorMapper.java           # maps OpenSky positional arrays to records
 └── StateVector.java
 common/
 └── GlobalExceptionHandler.java      # maps exceptions to HTTP errors (RFC 9457)
+
+resources/db/migration/              # Flyway SQL migrations
 ```
 
 ## Run locally
@@ -46,11 +55,11 @@ docker compose up -d db
 ./mvnw spring-boot:run        # Windows: .\mvnw.cmd spring-boot:run
 ```
 
-The API starts on `http://localhost:8080`.
+The API starts on `http://localhost:8080`. Flyway applies the database migrations on startup.
 
 ## OpenSky credentials
 
-The live position endpoint needs an OpenSky API client
+Live positions and the collector need an OpenSky API client
 (create one on your [OpenSky account page](https://opensky-network.org/my-opensky/account)).
 Credentials are read from environment variables, never from the repository:
 
@@ -59,7 +68,20 @@ setx OPENSKY_CLIENT_ID "your_client_id"
 setx OPENSKY_CLIENT_SECRET "your_client_secret"
 ```
 
-The application starts without them, only the live position endpoint needs them.
+The application starts without them, only the OpenSky features need them.
+
+## Position collection
+
+A scheduled task records the position of every aircraft in the fleet, building a history
+that the OpenSky REST API does not keep (state vectors are only available for the last hour).
+
+```yaml
+flighttracker:
+  collector:
+    enabled: true
+    interval: PT5M
+    initial-delay: PT30S
+```
 
 ## Endpoints
 
@@ -68,6 +90,7 @@ The application starts without them, only the live position endpoint needs them.
 | GET | `/api/aircraft` | List all aircraft, optional `?country=` filter |
 | GET | `/api/aircraft/{icao24}` | Get one aircraft, 404 if unknown |
 | GET | `/api/aircraft/{icao24}/position` | Live position from OpenSky, 404 if the aircraft is not flying |
+| GET | `/api/aircraft/{icao24}/history` | Collected positions, most recent first, `?limit=` from 1 to 500 (default 50) |
 | POST | `/api/aircraft` | Register an aircraft, 409 if it already exists |
 
 Example requests are in `requests.http` (VS Code REST Client).
@@ -94,8 +117,10 @@ Example of a live position response:
 ./mvnw test
 ```
 
-19 tests: service rules with Mockito, web layer with MockMvc, and OpenSky array mapping
-without any network call. The context test needs the database container running.
+29 tests: service rules with Mockito, web layer with MockMvc, OpenSky array mapping without
+any network call, and the collector behaviour when OpenSky fails. The context test needs the
+database container running: it applies the Flyway migrations and validates the schema
+against the JPA entities.
 
 ## Design notes
 
@@ -107,15 +132,31 @@ the service checks `existsById` first and rejects duplicates with a 409.
 business layer (6 hexadecimal characters for ICAO24), and neither a schema change nor an
 OpenSky format change breaks the API.
 
+**Schema owned by Flyway.** Tables and named constraints are written in versioned SQL
+migrations. Hibernate only validates (`ddl-auto: validate`), so an entity that no longer
+matches the schema stops the application at startup.
+
 **OpenSky credits are protected.** Live positions are only requested for aircraft registered
 in the fleet. An unknown ICAO24 returns a 404 without any call to OpenSky.
+
+**One OpenSky call per collection cycle.** The whole fleet is requested in a single call,
+so a cycle costs 1 credit whatever the fleet size: 288 credits per day at a 5 minute interval,
+out of 4,000.
+
+**No duplicate positions.** When an aircraft has not transmitted between two cycles, OpenSky
+returns the same state again. The service skips it, and a unique constraint on
+`(icao24, recorded_at)` guards the database. The same constraint's index serves the history query.
+
+**Writes in a separate service.** `@Transactional` works through a Spring proxy, so a call
+between two methods of the same class would silently skip the transaction. The collector
+orchestrates, `PositionHistoryService` writes.
+
+**No database transaction around HTTP calls.** Database work runs in short transactions,
+so a slow OpenSky response never holds a database connection.
 
 **OAuth2 token handled by hand.** The token is cached in memory and refreshed 30 seconds before
 expiry. A 401 triggers a single retry with a fresh token. Spring Security's OAuth2 client could
 do this automatically, it is written by hand here to understand the flow.
-
-**No database transaction around the HTTP call.** The fleet lookup runs in its own short
-transaction, so a slow OpenSky response never holds a database connection.
 
 **Upstream errors are explicit.** OpenSky quota exhausted returns 503, any other OpenSky failure
 returns 502. Technical details go to the logs, not to the client.
@@ -125,9 +166,10 @@ returns 502. Technical details go to the logs, not to the client.
 - [x] Layered REST API with validation and error handling
 - [x] Unit and web layer tests
 - [x] OpenSky client with OAuth2 client credentials
-- [ ] Scheduled collection of positions and flight history
+- [x] Scheduled collection of positions and flight history
+- [x] Flyway migrations
+- [ ] Testcontainers integration tests, OpenAPI documentation
 - [ ] Aggregation endpoints (flight hours, airports)
-- [ ] Flyway migrations, Testcontainers, OpenAPI documentation
 - [ ] Docker image and CI with GitHub Actions
 
 ## Data source

@@ -8,7 +8,7 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
@@ -23,5 +23,5 @@ opensky:
 flighttracker:
   collector:
     enabled: true
-    interval: PT1M
+    interval: PT5M
     initial-delay: PT30S
