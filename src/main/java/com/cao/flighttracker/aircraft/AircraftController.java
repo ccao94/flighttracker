@@ -19,9 +19,11 @@ import jakarta.validation.Valid;
 public class AircraftController {
 
     private final AircraftService service;
+    private final LivePositionService livePositionService;
 
-    public AircraftController(AircraftService service) {
+    public AircraftController(AircraftService service, LivePositionService livePositionService) {
         this.service = service;
+        this.livePositionService = livePositionService;
     }
 
     @GetMapping
@@ -35,6 +37,11 @@ public class AircraftController {
     @GetMapping("/{icao24}")
     public AircraftResponse get(@PathVariable String icao24) {
         return AircraftResponse.from(service.findByIcao24(icao24.toLowerCase()));
+    }
+
+    @GetMapping("/{icao24}/position")
+    public LivePositionResponse position(@PathVariable String icao24) {
+        return LivePositionResponse.from(livePositionService.getLivePosition(icao24.toLowerCase()));
     }
 
     @PostMapping

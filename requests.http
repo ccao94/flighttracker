@@ -1,19 +1,32 @@
+### Register a test aircraft
 POST http://localhost:8080/api/aircraft
 Content-Type: application/json
 
 {"icao24": "3c6444", "callsign": "DLH9LF", "registration": "D-AIBD", "model": "A319", "originCountry": "Germany"}
 
-###
+### Get one aircraft
 GET http://localhost:8080/api/aircraft/3c6444
 
-###
+### List aircraft by country
 GET http://localhost:8080/api/aircraft?country=Germany
 
-###
+### Unknown aircraft, expect 404
 GET http://localhost:8080/api/aircraft/abcdef
 
-###
+### Invalid ICAO24, expect 400
 POST http://localhost:8080/api/aircraft
 Content-Type: application/json
 
 {"icao24": "zz"}
+
+### Register an aircraft currently flying (pick one from OpenSky)
+POST http://localhost:8080/api/aircraft
+Content-Type: application/json
+
+{"icao24": "39de4d", "callsign": "TVF64BH", "originCountry": "France"}
+
+### Live position from OpenSky, expect 200
+GET http://localhost:8080/api/aircraft/39de4d/position
+
+### Live position of an unknown aircraft, expect 404 without calling OpenSky
+GET http://localhost:8080/api/aircraft/abcdef/position

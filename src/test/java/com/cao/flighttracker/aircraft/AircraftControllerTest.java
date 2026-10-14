@@ -10,12 +10,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import com.cao.flighttracker.opensky.StateVector;
 
 @WebMvcTest(AircraftController.class)
 class AircraftControllerTest {
@@ -25,6 +29,9 @@ class AircraftControllerTest {
 
     @MockitoBean
     private AircraftService service;
+
+    @MockitoBean
+    private LivePositionService livePositionService;
 
     private Aircraft sampleAircraft() {
         return new Aircraft("3c6444", "DLH9LF", "D-AIBD", "A319", "Germany");
@@ -90,5 +97,26 @@ class AircraftControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void positionReturnsLiveState() throws Exception {
+        StateVector state = new StateVector("3c6444", "DLH9LF", "Germany",
+                Instant.ofEpochSecond(1760000005), 2.35, 48.85, 10000.0, false, 230.5, 90.0, 0.0);
+        when(livePositionService.getLivePosition("3c6444")).thenReturn(state);
+
+        mockMvc.perform(get("/api/aircraft/3c6444/position"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latitude").value(48.85))
+                .andExpect(jsonPath("$.callsign").value("DLH9LF"));
+    }
+
+    @Test
+    void positionReturns404WhenNotFlying() throws Exception {
+        when(livePositionService.getLivePosition("3c6444"))
+                .thenThrow(new NoLivePositionException("3c6444"));
+
+        mockMvc.perform(get("/api/aircraft/3c6444/position"))
+                .andExpect(status().isNotFound());
     }
 }
