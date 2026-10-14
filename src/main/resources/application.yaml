@@ -11,3 +11,9 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+opensky:
+  base-url: https://opensky-network.org/api
+  token-url: https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token
+  client-id: ${OPENSKY_CLIENT_ID:}
+  client-secret: ${OPENSKY_CLIENT_SECRET:}
