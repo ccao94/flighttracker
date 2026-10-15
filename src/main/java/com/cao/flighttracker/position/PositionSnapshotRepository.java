@@ -11,4 +11,7 @@ public interface PositionSnapshotRepository extends JpaRepository<PositionSnapsh
     boolean existsByAircraftIcao24AndRecordedAt(String icao24, Instant recordedAt);
 
     List<PositionSnapshot> findByAircraftIcao24OrderByRecordedAtDesc(String icao24, Limit limit);
+
+    List<PositionSnapshot> findByAircraftIcao24AndRecordedAtAfterOrderByRecordedAtAsc(
+            String icao24, Instant since);
 }

@@ -21,6 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.cao.flighttracker.opensky.StateVector;
+import com.cao.flighttracker.position.FlightStats;
 import com.cao.flighttracker.position.PositionHistoryService;
 import com.cao.flighttracker.position.PositionSnapshot;
 
@@ -136,5 +137,17 @@ class AircraftControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].latitude").value(48.67))
                 .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    void statsReturnsComputedValues() throws Exception {
+        FlightStats stats = new FlightStats("3c6444", 3, Instant.ofEpochSecond(1000),
+                Instant.ofEpochSecond(1600), 22.2, 10, 11000.0, 240.0);
+        when(positionHistoryService.getStats("3c6444", 7)).thenReturn(stats);
+
+        mockMvc.perform(get("/api/aircraft/3c6444/stats"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.distanceKm").value(22.2))
+                .andExpect(jsonPath("$.airborneMinutes").value(10));
     }
 }

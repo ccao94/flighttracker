@@ -83,4 +83,19 @@ class PositionSnapshotRepositoryTest {
                 .extracting(Aircraft::getIcao24)
                 .containsExactly("39de4d");
     }
+
+    @Test
+    void statsQueryReturnsPeriodInChronologicalOrder() {
+        snapshotRepository.save(snapshotAt(3000));
+        snapshotRepository.save(snapshotAt(1000));
+        snapshotRepository.save(snapshotAt(2000));
+
+        List<PositionSnapshot> result = snapshotRepository
+                .findByAircraftIcao24AndRecordedAtAfterOrderByRecordedAtAsc(
+                        "39de4d", Instant.ofEpochSecond(1500));
+
+        assertThat(result)
+                .extracting(PositionSnapshot::getRecordedAt)
+                .containsExactly(Instant.ofEpochSecond(2000), Instant.ofEpochSecond(3000));
+    }
 }

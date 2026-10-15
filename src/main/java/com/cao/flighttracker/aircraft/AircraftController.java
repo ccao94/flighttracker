@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.cao.flighttracker.position.FlightStats;
 import com.cao.flighttracker.position.PositionHistoryService;
 import com.cao.flighttracker.position.PositionSnapshotResponse;
 
@@ -56,6 +57,12 @@ public class AircraftController {
         return positionHistoryService.getHistory(icao24.toLowerCase(), limit).stream()
                 .map(PositionSnapshotResponse::from)
                 .toList();
+    }
+
+    @GetMapping("/{icao24}/stats")
+    public FlightStats stats(@PathVariable String icao24,
+                             @RequestParam(defaultValue = "7") int days) {
+        return positionHistoryService.getStats(icao24.toLowerCase(), days);
     }
 
     @PostMapping

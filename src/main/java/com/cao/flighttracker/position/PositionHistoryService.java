@@ -1,5 +1,7 @@
 package com.cao.flighttracker.position;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,6 +19,7 @@ public class PositionHistoryService {
 
     private static final int MIN_LIMIT = 1;
     private static final int MAX_LIMIT = 500;
+    private static final int MAX_STATS_DAYS = 30;
 
     private final PositionSnapshotRepository snapshotRepository;
     private final AircraftRepository aircraftRepository;
@@ -68,5 +71,18 @@ public class PositionHistoryService {
         int boundedLimit = Math.min(Math.max(limit, MIN_LIMIT), MAX_LIMIT);
         return snapshotRepository.findByAircraftIcao24OrderByRecordedAtDesc(
                 icao24, Limit.of(boundedLimit));
+    }
+
+    @Transactional(readOnly = true)
+    public FlightStats getStats(String icao24, int days) {
+        if (!aircraftRepository.existsById(icao24)) {
+            throw new AircraftNotFoundException(icao24);
+        }
+        int boundedDays = Math.min(Math.max(days, 1), MAX_STATS_DAYS);
+        Instant since = Instant.now().minus(Duration.ofDays(boundedDays));
+
+        List<PositionSnapshot> snapshots = snapshotRepository
+                .findByAircraftIcao24AndRecordedAtAfterOrderByRecordedAtAsc(icao24, since);
+        return FlightStatsCalculator.compute(icao24, snapshots);
     }
 }
