@@ -1,5 +1,7 @@
 # FlightTracker
 
+![CI](https://github.com/ccao94/flighttracker/actions/workflows/ci.yml/badge.svg)
+
 REST API for tracking real aircraft by their ICAO24 transponder address, built with Spring Boot.
 Live positions come from ADS-B data provided by the [OpenSky Network](https://opensky-network.org),
 and a scheduled task builds a position history for every aircraft in the fleet.
@@ -13,8 +15,8 @@ internship at Thales AVS (Training & Simulation).
 - Spring Web, Spring Data JPA (Hibernate), Bean Validation, Spring scheduling
 - RestClient, OAuth2 client credentials (OpenSky API)
 - PostgreSQL 16 (Docker), Flyway migrations
-- JUnit 5, Mockito, MockMvc
-- Maven
+- JUnit 5, Mockito, MockMvc, Testcontainers
+- Maven, GitHub Actions
 
 ## Architecture
 
@@ -114,13 +116,19 @@ Example of a live position response:
 ## Tests
 
 ```bash
-./mvnw test
+./mvnw verify
 ```
 
-29 tests: service rules with Mockito, web layer with MockMvc, OpenSky array mapping without
-any network call, and the collector behaviour when OpenSky fails. The context test needs the
-database container running: it applies the Flyway migrations and validates the schema
-against the JPA entities.
+33 tests, run on every push by GitHub Actions:
+
+- **Unit tests** (Mockito): business rules, collector behaviour when OpenSky fails,
+  OpenSky array mapping without any network call.
+- **Web layer tests** (MockMvc): HTTP status codes, validation and error responses.
+- **Integration tests** (Testcontainers): a disposable PostgreSQL container is started,
+  Flyway applies the real migrations, and repository queries and constraints are tested
+  against it.
+
+Only Docker is required, no local database needs to be running.
 
 ## Design notes
 
@@ -168,9 +176,11 @@ returns 502. Technical details go to the logs, not to the client.
 - [x] OpenSky client with OAuth2 client credentials
 - [x] Scheduled collection of positions and flight history
 - [x] Flyway migrations
-- [ ] Testcontainers integration tests, OpenAPI documentation
-- [ ] Aggregation endpoints (flight hours, airports)
-- [ ] Docker image and CI with GitHub Actions
+- [x] Integration tests with Testcontainers
+- [x] CI with GitHub Actions
+- [ ] Flight statistics from the collected history
+- [ ] OpenAPI documentation
+- [ ] Docker image of the application
 
 ## Data source
 
