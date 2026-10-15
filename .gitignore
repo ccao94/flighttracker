@@ -39,3 +39,6 @@ application-local.yml
 ### Metals (VS Code) ###
 .metals/
 .bloop/
+
+### VS Code extensions ###
+.github/modernize/
