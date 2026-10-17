@@ -1,0 +1,33 @@
+name: OpenSky reachability check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call OpenSky from a datacenter IP
+        env:
+          CLIENT_ID: ${{ secrets.OPENSKY_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.OPENSKY_CLIENT_SECRET }}
+        run: |
+          TOKEN=$(curl -s -X POST \
+            "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token" \
+            -d grant_type=client_credentials \
+            -d client_id="$CLIENT_ID" \
+            -d client_secret="$CLIENT_SECRET" | jq -r .access_token)
+
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Token request failed"
+            exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          echo "Token received"
+
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $TOKEN" \
+            "https://opensky-network.org/api/states/all?icao24=3c6444")
+          echo "OpenSky answered HTTP $STATUS"
+          test "$STATUS" = "200"
