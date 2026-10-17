@@ -26,3 +26,12 @@ flighttracker:
     enabled: true
     interval: PT5M
     initial-delay: PT30S
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

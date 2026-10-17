@@ -27,8 +27,10 @@ services:
       SPRING_JPA_SHOW_SQL: "false"
       OPENSKY_CLIENT_ID: ${OPENSKY_CLIENT_ID:-}
       OPENSKY_CLIENT_SECRET: ${OPENSKY_CLIENT_SECRET:-}
+      FLIGHTTRACKER_ADMIN_KEY: ${FLIGHTTRACKER_ADMIN_KEY:-}
     ports:
       - "8080:8080"
+    mem_limit: 512m
 
 volumes:
   pgdata:
