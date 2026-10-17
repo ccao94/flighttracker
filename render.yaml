@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: flighttracker
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: OPENSKY_CLIENT_ID
+        sync: false
+      - key: OPENSKY_CLIENT_SECRET
+        sync: false
+      - key: FLIGHTTRACKER_ADMIN_KEY
+        sync: false
+      - key: SPRING_JPA_SHOW_SQL
+        value: "false"
