@@ -1,11 +1,6 @@
-### Register flying aircraft for the collector
-POST http://localhost:8080/api/aircraft
-Content-Type: application/json
+### Position history of an Air India long-haul flight
+GET http://localhost:8080/api/aircraft/801659/history?limit=3
 
-{"icao24": "39de49", "callsign": "TVF3451", "originCountry": "France"}
 
-###
-POST http://localhost:8080/api/aircraft
-Content-Type: application/json
-
-{"icao24": "3455d9", "callsign": "VOE1BR", "originCountry": "Spain"}
+### Flight statistics
+GET http://localhost:8080/api/aircraft/801659/stats
