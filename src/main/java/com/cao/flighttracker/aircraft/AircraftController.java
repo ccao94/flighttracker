@@ -8,10 +8,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.cao.flighttracker.common.AdminKeyGuard;
 import com.cao.flighttracker.position.FlightStats;
 import com.cao.flighttracker.position.PositionHistoryService;
 import com.cao.flighttracker.position.PositionSnapshotResponse;
@@ -25,12 +27,15 @@ public class AircraftController {
     private final AircraftService service;
     private final LivePositionService livePositionService;
     private final PositionHistoryService positionHistoryService;
+    private final AdminKeyGuard adminKeyGuard;
 
     public AircraftController(AircraftService service, LivePositionService livePositionService,
-                              PositionHistoryService positionHistoryService) {
+                              PositionHistoryService positionHistoryService,
+                              AdminKeyGuard adminKeyGuard) {
         this.service = service;
         this.livePositionService = livePositionService;
         this.positionHistoryService = positionHistoryService;
+        this.adminKeyGuard = adminKeyGuard;
     }
 
     @GetMapping
@@ -66,7 +71,10 @@ public class AircraftController {
     }
 
     @PostMapping
-    public ResponseEntity<AircraftResponse> create(@Valid @RequestBody CreateAircraftRequest request) {
+    public ResponseEntity<AircraftResponse> create(
+            @RequestHeader(value = "X-Admin-Key", required = false) String adminKey,
+            @Valid @RequestBody CreateAircraftRequest request) {
+        adminKeyGuard.check(adminKey);
         Aircraft created = service.create(request.toEntity());
         URI location = URI.create("/api/aircraft/" + created.getIcao24());
         return ResponseEntity.created(location).body(AircraftResponse.from(created));

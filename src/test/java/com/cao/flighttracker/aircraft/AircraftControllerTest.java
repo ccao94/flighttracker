@@ -1,6 +1,7 @@
 package com.cao.flighttracker.aircraft;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,6 +21,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.cao.flighttracker.common.AdminKeyException;
+import com.cao.flighttracker.common.AdminKeyGuard;
 import com.cao.flighttracker.opensky.StateVector;
 import com.cao.flighttracker.position.FlightStats;
 import com.cao.flighttracker.position.PositionHistoryService;
@@ -39,6 +42,9 @@ class AircraftControllerTest {
 
     @MockitoBean
     private PositionHistoryService positionHistoryService;
+
+    @MockitoBean
+    private AdminKeyGuard adminKeyGuard;
 
     private Aircraft sampleAircraft() {
         return new Aircraft("3c6444", "DLH9LF", "D-AIBD", "A319", "Germany");
@@ -104,6 +110,22 @@ class AircraftControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void createReturns403WithoutValidAdminKey() throws Exception {
+        doThrow(new AdminKeyException()).when(adminKeyGuard).check(any());
+
+        String body = """
+                {"icao24": "3c6444"}
+                """;
+
+        mockMvc.perform(post("/api/aircraft")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden());
+
+        verify(service, never()).create(any());
     }
 
     @Test

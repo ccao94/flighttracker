@@ -21,6 +21,7 @@ opensky:
   client-secret: ${OPENSKY_CLIENT_SECRET:}
 
 flighttracker:
+  admin-key: ${FLIGHTTRACKER_ADMIN_KEY:}
   collector:
     enabled: true
     interval: PT5M

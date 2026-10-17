@@ -1,6 +1,12 @@
-### Position history of an Air India long-haul flight
-GET http://localhost:8080/api/aircraft/801659/history?limit=3
+### Without the admin key, expect 403
+POST http://localhost:8080/api/aircraft
+Content-Type: application/json
 
+{"icao24": "aaaaaa", "callsign": "TEST"}
 
-### Flight statistics
-GET http://localhost:8080/api/aircraft/801659/stats
+### With the admin key, expect 201
+POST http://localhost:8080/api/aircraft
+Content-Type: application/json
+X-Admin-Key: test-key
+
+{"icao24": "aaaaaa", "callsign": "TEST"}
