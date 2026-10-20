@@ -42,3 +42,5 @@ application-local.yml
 
 ### VS Code extensions ###
 .github/modernize/
+
+prod.http
